@@ -1,0 +1,112 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - '2181:2181'
+    networks:
+      - shared
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: bigdata-kafka
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 2
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - '9092:9092'
+    depends_on:
+      - zookeeper
+    networks:
+      - shared
+
+  kafka-ui-new:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui-new
+    ports:
+      - "7080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: bigdata-kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+    networks:
+      - shared
+
+  postgres-db:
+    image: postgres:16.0
+    container_name: bigdata-db
+    environment:
+      POSTGRES_USER: bigdata
+      POSTGRES_PASSWORD: bigdata
+      POSTGRES_DB: main_db
+    ports:
+      - '25432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - shared
+
+  jobmanager:
+    image: flink:1.18
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        jobmanager.memory.process.size: 1256m
+        taskmanager.memory.process.size: 1256m
+        taskmanager.numberOfTaskSlots: 1
+        parallelism.default: 1
+        cluster.evenly-spread-out-slots: true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - shared
+
+  taskmanager:
+    image: flink:1.18
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 1
+        taskmanager.memory.process.size: 1024m
+    depends_on:
+      - jobmanager
+    networks:
+      - shared
+
+  kafka-producer:
+    build:
+      context: .
+      dockerfile: python_producer/Dockerfile
+    depends_on:
+      - kafka
+    volumes:
+      - ./source_data:/app/source_data
+    networks:
+      - shared
+
+networks:
+  shared:
+    driver: bridge
+
+volumes:
+  postgres-data:
