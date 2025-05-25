@@ -104,6 +104,24 @@ services:
     networks:
       - shared
 
+  # EXPERIMENTAL!!!
+  flink-job-submitter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+     - jobmanager
+    networks:
+      - shared
+    command: >
+      bash -c "
+        echo 'JobManager is ready. Submitting Flink job...' &&
+        /opt/flink/bin/flink run
+        -d
+        -c com.mai.flink.ConsumerFlinkJob
+        /opt/flink/usrlib/app.jar
+      "
+
 networks:
   shared:
     driver: bridge

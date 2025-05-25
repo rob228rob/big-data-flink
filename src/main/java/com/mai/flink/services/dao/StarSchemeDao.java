@@ -31,24 +31,24 @@ public class StarSchemeDao {
     }
 
     /**
-     * Универсальный метод для UPSERT (INSERT ON CONFLICT DO UPDATE) и получения ID
+     * Универсальный метод для UPSERT (INSERT ON CONFLICT DO UPDATE) и получения id
      * для простых измерений с одним полем 'name' и UNIQUE(name).
      *
      * @param tableName Имя таблицы измерения (например, "dim_countries").
      * @param nameValue Значение поля 'name'.
      * @param conn      Активное соединение с БД.
-     * @return ID вставленной или существующей записи, или null, если nameValue пустое.
+     * @return id вставленной или существующей записи, или null, если nameValue пустое.
      * @throws SQLException Если произошла ошибка SQL.
      */
     private Long upsertAndGetId(String tableName, String nameValue, Connection conn) throws SQLException {
         if (nameValue == null || nameValue.isBlank()) {
             log.warn("Attempted to upsert into {} with null or blank nameValue. Returning null ID.", tableName);
-            return null; // Или ID для "UNKNOWN" записи, если такая стратегия выбрана
+            return null;
         }
 
         String sql = String.format(SQL_UPSERT_AND_GET_ID_TEMPLATE, tableName);
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, nameValue); // LOWER() уже в SQL-шаблоне
+            stmt.setString(1, nameValue);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getLong(1);
@@ -108,7 +108,6 @@ public class StarSchemeDao {
      * UPSERT и получение ID для dim_pets.
      */
     private Long upsertPetAndGetId(String petName, Long typeId, Long breedId, Long categoryId, Connection conn) throws SQLException {
-        // Если petName пуст, или любой из FK null, то питомца не можем вставить корректно
         if (petName == null || petName.isBlank() || typeId == null || breedId == null || categoryId == null) {
             log.warn("Attempted to upsert into dim_pets with incomplete data (name: {}, typeId: {}, breedId: {}, categoryId: {}). Returning null ID.",
                     petName, typeId, breedId, categoryId);
@@ -138,7 +137,6 @@ public class StarSchemeDao {
             String description, Float rating, Long reviews,
             Long releaseDateId, Long expiryDateId, Connection conn) throws SQLException {
 
-        // Валидация обязательных полей для продукта
         if (name == null || name.isBlank() || brandId == null) {
             log.warn("Attempted to upsert into dim_products with incomplete data (name: {}, brandId: {}). Returning null ID.", name, brandId);
             return null;
@@ -146,19 +144,19 @@ public class StarSchemeDao {
 
         try (PreparedStatement stmt = conn.prepareStatement(SQL_UPSERT_PRODUCTS)) {
             int i = 1;
-            stmt.setString(i++, name); // name (LOWER() в SQL)
-            stmt.setObject(i++, categoryId, java.sql.Types.BIGINT); // category_id
-            stmt.setBigDecimal(i++, price); // price
-            stmt.setBigDecimal(i++, weight); // weight
-            stmt.setObject(i++, colorId, java.sql.Types.BIGINT); // color_id
-            stmt.setObject(i++, sizeId, java.sql.Types.BIGINT); // size_id
-            stmt.setObject(i++, brandId, java.sql.Types.BIGINT); // brand_id
-            stmt.setObject(i++, materialId, java.sql.Types.BIGINT); // material_id
-            stmt.setString(i++, description); // description
-            stmt.setObject(i++, rating, java.sql.Types.REAL); // rating (FLOAT в DDL)
-            stmt.setObject(i++, reviews, java.sql.Types.BIGINT); // reviews
-            stmt.setObject(i++, releaseDateId, java.sql.Types.BIGINT); // release_date_id
-            stmt.setObject(i++, expiryDateId, java.sql.Types.BIGINT); // expiry_date_id
+            stmt.setString(i++, name);
+            stmt.setObject(i++, categoryId, java.sql.Types.BIGINT);
+            stmt.setBigDecimal(i++, price);
+            stmt.setBigDecimal(i++, weight);
+            stmt.setObject(i++, colorId, java.sql.Types.BIGINT);
+            stmt.setObject(i++, sizeId, java.sql.Types.BIGINT);
+            stmt.setObject(i++, brandId, java.sql.Types.BIGINT);
+            stmt.setObject(i++, materialId, java.sql.Types.BIGINT);
+            stmt.setString(i++, description);
+            stmt.setObject(i++, rating, java.sql.Types.REAL);
+            stmt.setObject(i++, reviews, java.sql.Types.BIGINT);
+            stmt.setObject(i++, releaseDateId, java.sql.Types.BIGINT);
+            stmt.setObject(i++, expiryDateId, java.sql.Types.BIGINT);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -290,7 +288,7 @@ public class StarSchemeDao {
             conn.setAutoCommit(false);
 
             try {
-                // 1. Получаем ID для всех простых измерений
+                // Получаем ID для всех простых измерений
                 Long customerCountryId = upsertAndGetId("dim_countries", rawMockData.customerCountry, conn);
                 Long sellerCountryId = upsertAndGetId("dim_countries", rawMockData.sellerCountry, conn);
                 Long storeCountryId = upsertAndGetId("dim_countries", rawMockData.storeCountry, conn);
@@ -365,11 +363,11 @@ public class StarSchemeDao {
                     stmt.executeUpdate();
                 }
 
-                conn.commit(); // Завершить транзакцию
+                conn.commit();
             } catch (SQLException e) {
-                conn.rollback(); // Откатить транзакцию при ошибке
+                conn.rollback();
                 log.error("Error processing record: {}", rawMockData.id, e);
-                throw e; // Перебросить исключение для Flink
+                throw e;
             }
         }
     }

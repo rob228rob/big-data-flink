@@ -34,17 +34,16 @@ public class ConsumerFlinkJob {
         configureAndRunJob(env, config);
     }
 
-    private static Properties loadConfiguration() throws ClassNotFoundException {
+    private static Properties loadConfiguration() {
         Properties config = new Properties();
-        config.setProperty("app.kafka.bootstrap-servers", "bigdata-kafka:9092");
-        config.setProperty("app.kafka.consumer-topic", "mock-data-topic");
-        config.setProperty("app.flink.out-kafka-topic", "mock-data-topic-resp");
-        config.setProperty("db.url", "jdbc:postgresql://bigdata-db:5432/main_db");
-        config.setProperty("db.user", "bigdata");
-        config.setProperty("db.password", "bigdata");
+        config.setProperty("app.kafka.bootstrap-servers", AppConfigConstants.KAFKA_BOOTSTRAP_SERVERS);
+        config.setProperty("app.kafka.consumer-topic", AppConfigConstants.KAFKA_CONSUMER_TOPIC);
+        config.setProperty("app.flink.out-kafka-topic", AppConfigConstants.KAFKA_OUT_TOPIC);
+        config.setProperty("db.url", AppConfigConstants.DB_URL);
+        config.setProperty("db.user", AppConfigConstants.DB_USER);
+        config.setProperty("db.password", AppConfigConstants.DB_PASSWORD);
         return config;
     }
-
     private static void configureAndRunJob(StreamExecutionEnvironment env, Properties cf) throws Exception {
         String kafkaServers = cf.getProperty("app.kafka.bootstrap-servers", "bigdata-kafka:9092");
         String kafkaConsumerTopic = cf.getProperty("app.kafka.consumer-topic", "mock-data-topic");
@@ -115,6 +114,12 @@ public class ConsumerFlinkJob {
             }
         }
 
+        /**
+         * приходят только строки, поэтому надо их распарсить в джава-типы,
+         * и только потом запустить пайплайн разложения по табличкам
+         * @param json
+         * @return
+         */
         @Override
         public String map(String json) {
             if (json == null || json.isEmpty()) {
